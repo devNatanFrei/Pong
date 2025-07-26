@@ -3,126 +3,134 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 
 public class Ranking extends JFrame {
-    private boolean rep = true; // Variável de controle para permitir apenas uma adição de jogador
-    private Font fonte; // Objeto de fonte para configurar a aparência do texto
-    private ArrayList<Jogador> jogadores; // Lista para armazenar os jogadores
-    private JList<String> rankingLista; // Componente gráfico para exibir o ranking
-    private int i = 0; // Variável de iteração (não utilizada no código atual)
-
-    private Ponto ponto; // Objeto Ponto usado para obter a pontuação
+    private Font fonte;
+    private ArrayList<Jogador> jogadores;
+    private JList<String> rankingLista;
+    private JButton adicionarBotao; // Movi a declaração para o escopo da classe
 
     public Ranking(Ponto ponto) {
-        jogadores = new ArrayList<>(); // Inicialização da lista de jogadores
+        jogadores = new ArrayList<>();
 
-        setTitle("Ranking"); // Configura o título da janela
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Configura a ação de fechar a janela
-        setSize(600, 600); // Define o tamanho da janela
-        setLayout(new BorderLayout()); // Define o layout da janela como BorderLayout
-        setVisible(true); // Torna a janela visível
+        setTitle("Ranking - Fim de Jogo");
 
-        JLabel Titulo = new JLabel("Ranking"); // Cria um rótulo para o título
-        Titulo.setHorizontalAlignment(SwingConstants.CENTER); // Define o alinhamento do rótulo como centralizado
+        // CORREÇÃO PRINCIPAL: Encerra toda a aplicação ao fechar esta janela.
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        rankingLista = new JList<>(); // Cria um componente JList para exibir o ranking
-        rankingLista.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); // Define o modo de seleção como seleção única
+        setSize(400, 500);
+        setLocationRelativeTo(null); // Centraliza a janela na tela
+        setLayout(new BorderLayout(10, 10));
 
-        JButton adicionarBotao = new JButton("Adicione seu nome"); // Cria um botão "Adicione seu nome"
-        adicionarBotao.addActionListener(new ActionListener() { // Adiciona um ouvinte de ação ao botão
+        JLabel tituloLabel = new JLabel("Ranking dos Melhores", SwingConstants.CENTER);
+        tituloLabel.setFont(new Font("Arial", Font.BOLD, 24));
+
+        rankingLista = new JList<>();
+        rankingLista.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        adicionarBotao = new JButton("Adicione seu nome");
+        adicionarBotao.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                adicionarJogador(ponto); // Chama o método para adicionar um jogador
-                atualizarRanking(); // Atualiza o ranking após adicionar o jogador
+                adicionarJogador(ponto);
+                atualizarRanking();
             }
         });
 
-        JPanel panelBotao = new JPanel(); // Cria um painel para o botão
-        panelBotao.setLayout(new FlowLayout()); // Define o layout do painel como FlowLayout
-        panelBotao.add(adicionarBotao); // Adiciona o botão ao painel
+        JPanel panelBotao = new JPanel(new FlowLayout());
+        panelBotao.add(adicionarBotao);
 
-        add(Titulo, BorderLayout.NORTH); // Adiciona o rótulo do título à região norte do layout da janela
-        add(new JScrollPane(rankingLista), BorderLayout.CENTER); // Adiciona a lista de ranking em um painel de rolagem à região central
-        add(panelBotao, BorderLayout.SOUTH); // Adiciona o painel do botão à região sul
+        // Adiciona um pouco de margem
+        ((JComponent) getContentPane()).setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        Texto(); // Configura a aparência do texto da lista de ranking
-        load(); // Carrega os dados dos jogadores
-        atualizarRanking(); // Atualiza o ranking exibido na interface gráfica
+        add(tituloLabel, BorderLayout.NORTH);
+        add(new JScrollPane(rankingLista), BorderLayout.CENTER);
+        add(panelBotao, BorderLayout.SOUTH);
+
+        configurarFonte();
+        load(); // Carrega os dados dos jogadores do arquivo
+        atualizarRanking(); // Atualiza o ranking exibido na interface
+
+        setVisible(true); // Torna a janela visível
     }
 
     private void adicionarJogador(Ponto ponto) {
-        if (rep) { // Verifica se ainda é permitido adicionar jogadores
-            String nome = JOptionPane.showInputDialog("Digite o nome do jogador:"); // Solicita o nome do jogador através de uma caixa de diálogo
-            rep = false; // Desativa a possibilidade de adicionar mais jogadores
-            Jogador jogador = new Jogador(nome, ponto.getPonto()); // Cria um novo objeto Jogador com o nome e a pontuação fornecidos
-            jogadores.add(jogador); // Adiciona o jogador à lista de jogadores
-            Save(); // Salva os dados dos jogadores
-            JOptionPane.showMessageDialog(this, "Pontuação foi adicionada"); // Exibe uma mensagem de confirmação
+        String nome = JOptionPane.showInputDialog(this, "Digite o nome do jogador:", "Salvar Pontuação", JOptionPane.PLAIN_MESSAGE);
+
+        // Verifica se o usuário inseriu um nome e não clicou em "Cancelar"
+        if (nome != null && !nome.trim().isEmpty()) {
+            Jogador jogador = new Jogador(nome.trim(), ponto.getPonto());
+            jogadores.add(jogador);
+            save(); // Salva a lista atualizada
+            JOptionPane.showMessageDialog(this, "Pontuação adicionada com sucesso!");
+
+            // MELHORIA: Desabilita o botão para não adicionar o nome novamente
+            adicionarBotao.setEnabled(false);
+        } else {
+            JOptionPane.showMessageDialog(this, "Nenhum nome inserido. Sua pontuação não foi salva.", "Aviso", JOptionPane.WARNING_MESSAGE);
         }
     }
 
     private void atualizarRanking() {
-        Collections.sort(jogadores, new Jogador("", 0)); // Classifica a lista de jogadores com base na pontuação
+        // Classifica a lista de jogadores em ordem decrescente de pontuação
+        Collections.sort(jogadores, new JogadorComparator());
 
-        ArrayList<String> rank = new ArrayList<>(); // Cria uma lista para armazenar as informações do ranking
-        for (int i = 0; i < Math.min(jogadores.size(), 10); i++) { // Percorre os jogadores com base no tamanho da lista ou no máximo de 10 jogadores
-            Jogador jogador = jogadores.get(i); // Obtém o jogador atual
-            rank.add(jogador.getNome() + " = " + jogador.getPontuacao()); // Adiciona a informação do jogador à lista de ranking
+        DefaultListModel<String> model = new DefaultListModel<>();
+        for (int i = 0; i < Math.min(jogadores.size(), 10); i++) {
+            Jogador jogador = jogadores.get(i);
+            model.addElement((i + 1) + ". " + jogador.getNome() + " - " + jogador.getPontuacao() + " pontos");
         }
 
-        rankingLista.setListData(rank.toArray(new String[0])); // Atualiza os dados exibidos na lista de ranking
+        rankingLista.setModel(model);
     }
 
-    private void Texto() {
-        fonte = new Font("Consolas", Font.PLAIN, 24); // Cria uma nova fonte com o nome "Consolas", estilo plano e tamanho 24
-        rankingLista.setFont(fonte); // Define a fonte do componente JList como a fonte criada
+    private void configurarFonte() {
+        fonte = new Font("Consolas", Font.PLAIN, 18);
+        rankingLista.setFont(fonte);
     }
 
-    private void Save() {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("C:\\Users\\USER\\Desktop\\Códigos\\JAVA\\PingPong\\output.txt"))) {
-            for (Jogador jogador : jogadores) { // Percorre os jogadores da lista
-                writer.write(jogador.getNome() + " = " + jogador.getPontuacao()); // Escreve o nome e a pontuação do jogador no arquivo
-                writer.newLine(); // Escreve uma nova linha
+    private void save() {
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("output.txt"))) {
+            for (Jogador jogador : jogadores) {
+                writer.write(jogador.getNome() + ";" + jogador.getPontuacao()); // Usar ";" como separador é mais seguro que "="
+                writer.newLine();
             }
-            JOptionPane.showMessageDialog(this, "Dados salvos"); // Exibe uma mensagem de confirmação
         } catch (IOException e) {
-            e.printStackTrace(); // Imprime a pilha de exceções (tratamento de erro)
+            JOptionPane.showMessageDialog(this, "Erro ao salvar o ranking: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
         }
     }
 
     private void load() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("C:\\Users\\USER\\Desktop\\Códigos\\JAVA\\PingPong\\output.txt"))) {
+        File rankingFile = new File("output.txt");
+        if (!rankingFile.exists()) {
+            return; // Se o arquivo não existe, não há nada a carregar.
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(rankingFile))) {
             String line;
-            while ((line = reader.readLine()) != null) { // Lê cada linha do arquivo
-                String[] parts = line.split("="); // Divide a linha em duas partes usando o caractere "=" como separador
-                String name = parts[0].trim(); // Obtém o nome do jogador removendo espaços em branco
-                int pont = Integer.parseInt(parts[1].trim()); // Obtém a pontuação do jogador convertendo para um número inteiro
-                Jogador jogador = new Jogador(name, pont); // Cria um novo objeto Jogador com o nome e a pontuação obtidos
-                jogadores.add(jogador); // Adiciona o jogador à lista de jogadores
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(";"); // Divide a linha usando ";"
+                if (parts.length == 2) {
+                    String name = parts[0].trim();
+                    int pont = Integer.parseInt(parts[1].trim());
+                    jogadores.add(new Jogador(name, pont));
+                }
             }
-        } catch (IOException e) {
-            e.printStackTrace(); // Imprime a pilha de exceções (tratamento de erro)
+        } catch (IOException | NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Erro ao carregar o ranking: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
         }
     }
 
-    private static boolean verificarNomeExistente(String nome, String nomeArquivo) {
-        try {
-            return Files.lines(Paths.get(nomeArquivo))
-                    .anyMatch(line -> line.trim().equalsIgnoreCase(nome));
-        } catch (IOException e) {
-            e.printStackTrace(); // Imprime a pilha de exceções (tratamento de erro)
-            return false;
-        }
-    }
-
-    private class Jogador implements Comparator<Jogador> {
-        private String nome; // Nome do jogador
-        private int pontuacao; // Pontuação do jogador
+    // A classe Jogador pode ser interna e privada
+    private class Jogador {
+        private String nome;
+        private int pontuacao;
 
         public Jogador(String nome, int pontuacao) {
             this.nome = nome;
@@ -136,11 +144,14 @@ public class Ranking extends JFrame {
         public int getPontuacao() {
             return pontuacao;
         }
-
-        @Override
-        public int compare(Jogador jogador1, Jogador jogador2) {
-            return Integer.compare(jogador2.getPontuacao(), jogador1.getPontuacao()); // Compara as pontuações de dois jogadores para classificação
-        }
     }
 
+    // É melhor ter uma classe separada para o Comparator
+    private class JogadorComparator implements Comparator<Jogador> {
+        @Override
+        public int compare(Jogador j1, Jogador j2) {
+            // Compara para ordenar da maior pontuação para a menor
+            return Integer.compare(j2.getPontuacao(), j1.getPontuacao());
+        }
+    }
 }

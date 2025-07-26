@@ -133,14 +133,16 @@ public class JogoCenario extends CenarioPadrao {
                 reiniciarJogada = false;
 
                 if (flat) {
+
+                    Jogo.pausado = true;
+
                     if (pontoA.getPonto() > pontoB.getPonto()) {
                         Ranking j1 = new Ranking(pontoA);
-                        j1.setVisible(true);
+
                         flat = false;
-                    }
-                   else if (pontoA.getPonto()< pontoB.getPonto()) {
+                    } else if (pontoA.getPonto() < pontoB.getPonto()) {
                         Ranking j2 = new Ranking(pontoB);
-                        j2.setVisible(true);
+
                         flat = false;
                     }
                 }
